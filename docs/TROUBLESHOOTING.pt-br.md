@@ -1,4 +1,4 @@
-# SOLUÇÃO DE PROBLEMAS
+# SOLUÇÃO DE PROBLEMAS - ᴘᴛ
 
 Organizado por sintoma. Cada item diz **como distinguir** as causas possíveis,
 não só o que tentar.
@@ -169,4 +169,4 @@ oledmirror device --do stats
 
 O primeiro passo que falhar aponta a camada com problema.
 
-by caiothevisual
+by caiothedev<br />

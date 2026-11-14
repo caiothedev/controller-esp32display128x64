@@ -1,4 +1,4 @@
-# PROTOCOLO v1
+# PROTOCOLO v1 - ᴘᴛ
 
 Especificação do enlace serial entre a aplicação Windows e o ESP32.
 
@@ -300,4 +300,4 @@ Os testes unitários do firmware rodam no PC, sem placa:
 cd firmware && pio test -e native
 ```
 
-by caiothevisual
+by caiothedev<br />

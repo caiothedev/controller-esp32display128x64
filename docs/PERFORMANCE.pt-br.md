@@ -1,4 +1,4 @@
-# DESEMPENHO (ONDE ESTÃO OS GARGALOS)
+# DESEMPENHO (ONDE ESTÃO OS GARGALOS) - ᴘᴛ
 
 Todos os números aqui foram **medidos**, não estimados. Os comandos que os
 produzem estão indicados em cada seção.
@@ -235,4 +235,4 @@ Em ordem de custo-benefício:
 6. **Troque para um ESP32-S3 ou C3.** O USB nativo elimina o gargalo da UART.
    Os ambientes já estão prontos no `platformio.ini`.
 
-by caiothevisual
+by caiothedev<br />

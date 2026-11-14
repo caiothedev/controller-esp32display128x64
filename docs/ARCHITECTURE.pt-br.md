@@ -1,4 +1,4 @@
-# ARQUITETURA
+# ARQUITETURA - ᴘᴛ
 
 ## INTRODUÇÃO
 
@@ -212,4 +212,4 @@ testes nativos deles compilam com `g++` puro.
 
 Etapas 2 a 8 não alocam nada (garantido por teste).
 
-by caiothevisual
+by caiothedev<br />

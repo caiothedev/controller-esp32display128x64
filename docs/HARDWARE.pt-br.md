@@ -1,4 +1,4 @@
-# HARDWARE
+# HARDWARE - ᴘᴛ
 
 Este documento explica **como cada conclusão foi tirada** a partir da descrição do
 hardware. Onde a informação disponível não permite concluir, isso está dito
@@ -283,4 +283,4 @@ espelhe uma **região** (ex.: 512×256) ou uma **janela pequena**. Aí a reduç�
 de 4× em vez de 15×, e o conteúdo fica legível. A aplicação suporta os dois modos
 justamente por isso.
 
-by caiothevisual
+by caiothedev<br />
