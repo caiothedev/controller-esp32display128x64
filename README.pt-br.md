@@ -40,9 +40,9 @@ A redução cai de 15× para 4× e o conteúdo fica legível. A aplicação supo
 | Codificação RAW / RLE / DELTA / Auto | pronto, testado e **medido** |
 | Firmware ESP32 modular | pronto, testes unitários passando |
 | Captura Windows (monitor / janela / região) | pronto, compila |
-| Aplicação WPF | pronta — **ver a ressalva abaixo** |
+| Aplicação WPF | pronta — só compila no Windows (ver [Limitações](#limitações), item 7) |
 | CLI (prévia, benchmark, simulação, diagnóstico) | pronto, em uso |
-| 124 testes em C# + 28 no firmware | passando |
+| 142 testes em C# + 28 no firmware | passando |
 
 ## Comece por aqui
 
@@ -53,17 +53,59 @@ cd desktop
 dotnet run --project OledMirror.Cli -- preview --pattern Text
 dotnet run --project OledMirror.Cli -- simulate --seconds 3 --show
 dotnet run --project OledMirror.Cli -- bench
+dotnet run --project OledMirror.Cli -- preview --text "Ola, mundo!\nlinha 2"
 ```
 
 O primeiro mostra no terminal exatamente o que iria para o painel.
+O último mostra o **modo texto** (ver abaixo).
+
+### Modo texto
+
+Em vez de espelhar a tela, o painel pode mostrar um texto qualquer. Na aplicação,
+em **Conteúdo**, escolha **Mostrar um texto**, digite (ou use **Abrir .txt...**) e
+clique em **Iniciar**. A prévia mostra o resultado na hora, mesmo antes de iniciar,
+e edições com o espelhamento rodando vão direto para o painel.
+
+- Quebra de linha automática por palavra; Enter força uma nova linha.
+- Tamanho automático (o maior que couber) ou fixo: 1 = 21 colunas × 8 linhas, até 4.
+- Texto que não cabe nem no menor tamanho rola de baixo para cima.
+- Fonte 5×7 com ASCII completo; letras acentuadas viram a letra base (ã → a, ç → c).
 O segundo roda o pipeline completo — incluindo o protocolo — contra um ESP32 simulado.
 O terceiro mede a compressão.
 
 ### Com hardware
 
 1. Leia **[docs/HARDWARE.md](docs/HARDWARE.md)** e monte o circuito.
-2. Grave o firmware.
-3. Rode `oledmirror device --do info`.
+2. Grave o firmware. O painel deve mostrar "aguardando o PC".
+3. **Feche o monitor serial** do PlatformIO/Arduino/VS Code — ele segura a porta.
+4. Siga o [roteiro de integração](#roteiro-de-integração) a partir da fase 2:
+
+```bash
+cd desktop
+dotnet run --project OledMirror.Cli -- ports
+dotnet run --project OledMirror.Cli -- device --do info
+```
+
+### Testar o hardware sem o .NET (Python)
+
+Se o Windows bloquear o executável compilado ("Uma política de Controle de
+Aplicativo bloqueou este arquivo" — é o Smart App Control), as fases 2 a 4 podem
+ser feitas com o cliente em Python, que só precisa do `pyserial`:
+
+```bash
+pip install pyserial
+python tools/oledmirror_test.py ports
+python tools/oledmirror_test.py info
+python tools/oledmirror_test.py text "OLA MUNDO"
+python tools/oledmirror_test.py pattern checkerboard   # border, stripes, lines, gradient, white, black
+python tools/oledmirror_test.py stats
+python tools/oledmirror_test.py contrast 200
+python tools/oledmirror_test.py controller sh1106      # se a imagem sair deslocada 2 px
+python tools/oledmirror_test.py selftest               # confere o protocolo, sem placa
+```
+
+Use `--port COM5` se a porta detectada não for a do ESP32. O espelhamento de tela
+em si continua sendo feito pela aplicação em .NET.
 
 ## Hardware
 
@@ -105,6 +147,16 @@ cd firmware
 pio run -e esp32dev -t upload # ESP32 clássico, I2C a 800 kHz
 ```
 
+ou
+```
+python -m platformio run -e esp32dev -t upload
+```
+
+**No VS Code:** abra a pasta **`firmware`** (Arquivo → Abrir Pasta), não a raiz do
+repositório — a extensão do PlatformIO só reconhece o projeto quando o
+`platformio.ini` está na raiz do workspace. Depois use a barra inferior: compila, grava.
+Se a gravação travar em "Connecting...", segure o botão **BOOT** da placa até começar a gravar.
+
 Outros ambientes:
 
 | Ambiente | Quando usar |
@@ -145,6 +197,22 @@ As configurações são salvas em
 `%APPDATA%\OledMirror\settings.json`.
 
 ### Linha de comando
+
+Os exemplos usam `oledmirror` como abreviação. A partir da pasta `desktop`, rode
+assim, sem instalar nada:
+
+```bash
+dotnet run --project OledMirror.Cli -- <comando> [opcoes]
+```
+
+Ou gere um executável e use o nome curto de verdade:
+
+```bash
+dotnet publish OledMirror.Cli -c Release -o publish
+publish\oledmirror ports          # Windows (no Linux: ./publish/oledmirror ports)
+```
+
+Use `--port COM5` no `device` se a porta detectada não for a do ESP32.
 
 ```bash
 oledmirror preview  --pattern Text --dither FloydSteinberg 
@@ -194,7 +262,7 @@ O sistema tem dois tetos independentes, e o menor manda:
 
 | Cenário | Banda vs. frame cru |
 |---|---|
-| tela parada | tráfego ~zero (frames idênticos não são enviados) |
+| tela parada | tráfego ~zero (frames idênticos não são enviados; um frame completo a cada 3 s, para o painel se recuperar sozinho se o ESP32 reiniciar) |
 | região pequena mudando (relógio) | **11× menos** |
 | cursor se movendo | **3,6× menos** |
 | janela rolando | 1,3× menos |
@@ -213,7 +281,8 @@ Ditas de forma direta:
 4. **O controlador do painel não está confirmado.** SSD1306 é o palpite; se a imagem sair deslocada 2 px, é SH1106 — trocável sem regravar (`SET_CONFIG`).
 5. **Captura de janela pode sair preta** em janelas que não respondem a `PrintWindow`. Use o modo região.
 6. **Painéis de duas cores** (faixa amarela no topo) cortam uma faixa da imagem.
-7. **O projeto WPF não foi compilado** neste ambiente — ver a ressalva acima.
+7. **A interface gráfica (WPF) só compila e roda no Windows.** Fora dele, use o filtro
+`OledMirror.CrossPlatform.slnf` (núcleo, CLI e testes).
 8. **I2C a 800 kHz está fora da especificação** do SSD1306. Funciona na maioria dos módulos; se não funcionar no seu, use `esp32dev-i2c400`.
 
 
@@ -230,7 +299,7 @@ Ditas de forma direta:
 ## Testes
 
 ```bash
-cd desktop && dotnet test OledMirror.Tests/OledMirror.Tests.csproj   # 124 testes
+cd desktop && dotnet test OledMirror.Tests/OledMirror.Tests.csproj   # 128 testes
 cd firmware && pio test -e native                                    # 28 testes
 ```
 

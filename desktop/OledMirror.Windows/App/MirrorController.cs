@@ -175,12 +175,20 @@ public sealed class MirrorController : IDisposable
         _settings = settings;
         if (_pipeline is null) return;
 
+        if (sourceChanged && settings.ContentMode == ContentMode.Text && _pipeline.Source is TextSource text)
+        {
+            text.Update(settings.ToTextOptions());
+            sourceChanged = false;
+        }
+
         _pipeline.Settings = settings.ToMirrorSettings();
         if (sourceChanged) _pipeline.SetSource(OpenSource(settings));
     }
 
     private ICaptureSource OpenSource(AppSettings settings)
     {
+        if (settings.ContentMode == ContentMode.Text) return new TextSource(settings.ToTextOptions());
+
         try
         {
             return settings.SourceKind switch
@@ -203,6 +211,13 @@ public sealed class MirrorController : IDisposable
         }
     }
 
+    public static void RenderText(AppSettings settings, Span<byte> frame)
+    {
+        using var source = new TextSource(settings.ToTextOptions()) { FixedTimeSeconds = 0 };
+        source.TryCapture(out CapturedFrame captured);
+        new FrameProcessor(settings.ToTextImageOptions()).Process(captured, frame);
+    }
+    
     // ------------------------------------------------------------------ painel
 
     /// <summary>Envia contraste e inversao para o dispositivo.</summary>
@@ -231,7 +246,7 @@ public sealed class MirrorController : IDisposable
         source.TryCapture(out CapturedFrame captured);
         processor.Process(captured, frame);
 
-        _link.SendStreamBegin();
+        // Sem STREAM_BEGIN: assim o padrao fica no painel ate o proximo comando, em vez de o firmware voltar a tela de espera depois do timeout.
         if (_link.TrySendFrame(CommandId.FrameRaw, frame))
             _log.Info(Cat, $"Padrao de teste enviado: {pattern}");
         else

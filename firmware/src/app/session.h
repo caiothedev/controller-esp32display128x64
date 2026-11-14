@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "config/config.h"
 #include "display/display_driver.h"
 #include "protocol/parser.h"
 #include "protocol/protocol.h"
@@ -28,6 +29,10 @@ class Session {
 
         // Envia uma linha de log para o host (aparece no painel de log da aplicacao)
         void SendLog(LogLevel level, const char* message);
+
+        // Informa se o painel respondeu na inicializacao. Sem painel, o HELLO_ACK
+        // anuncia o controlador como desconhecido, que e' como o host diagnostica fiacao
+        void SetPanelDetected(bool detected) { panel_detected_ = detected; }
 
     private:
         void HandlePacket(const ParsedPacket& packet);
@@ -55,7 +60,8 @@ class Session {
         uint8_t  tx_sequence_ = 0;
         bool     streaming_ = false;
         bool     idle_screen_shown_ = false;
-        uint32_t last_frame_ms_ = 0;
+        bool     panel_detected_ = true;
+        uint32_t last_host_ms_ = 0;
         uint32_t idle_timeout_ms_ = OLEDMIRROR_IDLE_TIMEOUT_MS;
         uint32_t boot_ms_ = 0;
 
@@ -63,6 +69,11 @@ class Session {
         uint32_t frames_dropped_ = 0;
         uint16_t last_render_us_ = 0;
         uint8_t  contrast_ = 0x7F;
+        uint8_t  contrast_saved_ = 0x7F;
+        bool     contrast_dirty_ = false;
+        uint32_t contrast_changed_ms_ = 0;
+
+        static constexpr uint32_t kContrastPersistDelayMs = 1000;
     };
 }
 
