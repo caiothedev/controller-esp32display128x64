@@ -280,11 +280,18 @@ public sealed class DeviceLink : IDisposable
                 continue;
             }
 
+            if (hello.ProtocolVersion != ProtocolConstants.Version)
+            {
+                _log.Error(Cat, $"Handshake recusado: o dispositivo usa o protocolo v{hello.ProtocolVersion}, mas esta aplicacao exige v{ProtocolConstants.Version}. Atualize o firmware ou use uma versao compativel da aplicacao.");
+                CloseTransport();
+                _device = null;
+                SetState(LinkState.Faulted);
+                return;
+            }
+
             failures = 0;
             _device = hello;
             _log.Info(Cat, $"Conectado: {hello}");
-            if (hello.ProtocolVersion != ProtocolConstants.Version)
-                _log.Warning(Cat, $"Firmware fala o protocolo v{hello.ProtocolVersion}; esta aplicacao fala o v{ProtocolConstants.Version}.");
             if (hello.Controller == ControllerId.Unknown)
                 _log.Warning(Cat, "O ESP32 respondeu, mas o painel nao. Confira a fiacao (VCC no 3V3, SDA no GPIO21, SCL no GPIO22).");
 

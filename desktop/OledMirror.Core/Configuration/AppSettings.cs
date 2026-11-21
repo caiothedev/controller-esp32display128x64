@@ -100,19 +100,62 @@ public sealed class AppSettings
         Image = ContentMode == ContentMode.Text ? ToTextImageOptions() : ToImageOptions(),
     };
 
-    /// <summary>Corrige valores fora da faixa (arquivo editado a mao, versao antiga).</summary>
+    private const int MaxRegionDimension = 8192;
+    private const long MaxRegionPixels = 16_777_216;
+    private static readonly int[] SupportedBaudRates = { 115200, 230400, 460800, 921600, 1500000 };
+
+    /// <summary>Corrige valores invalidos de arquivos antigos ou editados manualmente.</summary>
     public void Normalize()
     {
-        if (BaudRate <= 0) BaudRate = 921600;
+        if (PortName is not null)
+        {
+            PortName = PortName.Trim();
+            if (PortName.Length == 0) PortName = null;
+        }
+
+        if (!SupportedBaudRates.Contains(BaudRate))
+            BaudRate = 921600;
+
+        ContentMode = NormalizeEnum(ContentMode, ContentMode.Mirror);
+        TextAlign = NormalizeEnum(TextAlign, TextAlign.Center);
+        SourceKind = NormalizeEnum(SourceKind, CaptureSourceKind.Monitor);
+        ResizeMode = NormalizeEnum(ResizeMode, ResizeMode.Fit);
+        Dithering = NormalizeEnum(Dithering, DitheringMode.FloydSteinberg);
+        Encoding = NormalizeEnum(Encoding, FrameEncoding.Auto);
+        LogLevel = NormalizeEnum(LogLevel, LogLevel.Info);
+
+        if (SourceId is not null)
+        {
+            SourceId = SourceId.Trim();
+            if (SourceId.Length == 0) SourceId = null;
+        }
+
         if (!MirrorSettings.SupportedFps.Contains(TargetFps)) TargetFps = 10;
         Threshold = Math.Clamp(Threshold, 0, 255);
         DisplayContrast = Math.Clamp(DisplayContrast, 0, 255);
-        RegionWidth = Math.Max(16, RegionWidth);
-        RegionHeight = Math.Max(16, RegionHeight);
-        if (Contrast <= 0 || double.IsNaN(Contrast)) Contrast = 1.0;
-        if (Gamma <= 0 || double.IsNaN(Gamma)) Gamma = 1.0;
+
+        RegionWidth = Math.Clamp(RegionWidth, 16, MaxRegionDimension);
+        RegionHeight = Math.Clamp(RegionHeight, 16, MaxRegionDimension);
+        if ((long)RegionWidth * RegionHeight > MaxRegionPixels)
+        {
+            RegionWidth = 640;
+            RegionHeight = 320;
+        }
+
+        if (!double.IsFinite(Contrast)) Contrast = 1.0;
+        else Contrast = Math.Clamp(Contrast, 0.0, 20.0);
+
+        if (!double.IsFinite(Gamma)) Gamma = 1.0;
+        else Gamma = Math.Clamp(Gamma, 0.05, 20.0);
+
         DisplayText ??= string.Empty;
         TextScale = Math.Clamp(TextScale, 0, TextOptions.MaxScale);
+
+        private static TEnum NormalizeEnum<TEnum>(
+            TEnum value,
+            TEnum fallback
+        ) where TEnum : struct, Enum
+            => Enum.IsDefined(value) ? value : fallback;
     }
 }
 
@@ -173,6 +216,7 @@ public sealed class SettingsStore
     {
         try
         {
+            settings.Normalize();
             string? directory = System.IO.Path.GetDirectoryName(Path);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
